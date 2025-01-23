@@ -1,2 +1,3 @@
-learn-go
 *.json
+todo-cli/todo-cli
+weather-fetcher/weather-fetcher
