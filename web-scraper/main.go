@@ -112,9 +112,6 @@ func getLocalAIResponse(message string, context string, model string, temperatur
 
 	requestBody := LocalAIRequest{
 		Model: model,
-		Options: map[string]interface{}{
-			"num_ctx": 4096,
-		},
 		Messages: []struct {
 			Role    string `json:"role"`
 			Content []struct {
