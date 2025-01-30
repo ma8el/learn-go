@@ -1,15 +1,22 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	"notes-api/db"
+	"notes-api/routes"
 )
 
 func main() {
-	r := chi.NewRouter()
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World!"))
-	})
-	http.ListenAndServe(":3000", r)
+	// Initialize database
+	if err := db.InitDB(); err != nil {
+		log.Fatal("Failed to initialize database:", err)
+	}
+
+	// Setup routes
+	r := routes.SetupRouter()
+
+	log.Println("Server is running on port 3000")
+	log.Fatal(http.ListenAndServe(":3000", r))
 }
