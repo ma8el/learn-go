@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/charmbracelet/huh"
 )
 
 type LocalAIRequest struct {
@@ -37,20 +39,54 @@ type LocalAIResponse struct {
 }
 
 var localAIUrl = "http://localhost:11434/v1/chat/completions"
-var context = `I am interested in python, typescript, vuejs and go.
-Give me the most interesting topics and the most interesting posts.
-I am not interested in improving the html code.
-The html does not interest me.`
 
-var model = "marco-o1"
-var temperature float32 = 0.5
+//var context = `I am interested in python, typescript, vuejs and go.
+//Give me the most interesting topics and the most interesting posts.
+//I am not interested in improving the html code.
+//The html does not interest me.`
+//
+//var model = "marco-o1"
+//var temperature float32 = 0.5
+
+var (
+	model       string
+	context     string
+	temperature string
+)
 
 func main() {
-	doc := getPageDocument("https://news.ycombinator.com/")
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Choose a model").
+				Options(
+					huh.NewOption("marco-o1", "marco-o1"),
+					huh.NewOption("deepseek-r1", "deepseek-r1"),
+				).Value(&model),
+			huh.NewInput().Title("Context").Placeholder("Enter context").Value(&context),
+			huh.NewInput().Title("Temperature").Placeholder("Enter temperature").Value(&temperature),
+		),
+	)
 
+	err := form.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	temp, err := strconv.ParseFloat(temperature, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	response := getAICuratedPosts(context, model, float32(temp))
+	fmt.Println(response)
+}
+
+func getAICuratedPosts(context string, model string, temperature float32) string {
+	doc := getPageDocument("https://news.ycombinator.com/")
 	posts := getHackerNewsPosts(doc)
 	response := getLocalAIResponse(posts, context, model, temperature)
-	fmt.Println(response)
+	return response
 }
 
 func getPageDocument(url string) *goquery.Document {
