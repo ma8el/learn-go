@@ -1,5 +1,6 @@
 *.json
 todo-cli/todo-cli
+notes-cli/notes-cli
 weather-fetcher/weather-fetcher
 .env
 *.db
