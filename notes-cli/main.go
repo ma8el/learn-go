@@ -89,6 +89,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+b":
 			m.focus = "list"
 			updateNote(m.list.SelectedItem().(noteListItem).ID(), m.list.SelectedItem().(noteListItem).title, m.textarea.Value())
+			m.list.SetItems(loadNotes())
 		case "up", "k":
 			if m.cursor > 0 && m.focus == "list" {
 				m.cursor--
@@ -206,7 +207,13 @@ func loadNotes() []list.Item {
 }
 
 func createNote(title, content string) {
-	resp, err := http.Post("http://localhost:3000/notes", "application/json", bytes.NewBuffer([]byte(fmt.Sprintf(`{"title": "%s", "content": "%s"}`, title, content))))
+	note := apiNote{
+		Title:   title,
+		Content: content,
+	}
+	body, _ := json.Marshal(note)
+
+	resp, err := http.Post("http://localhost:3000/notes", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("Error creating note: %v", err)
 	}
@@ -214,7 +221,13 @@ func createNote(title, content string) {
 }
 
 func updateNote(id, title, content string) {
-	req, _ := http.NewRequest(http.MethodPut, "http://localhost:3000/notes/"+id, bytes.NewBuffer([]byte(fmt.Sprintf(`{"title": "%s", "content": "%s"}`, title, content))))
+	note := apiNote{
+		Title:   title,
+		Content: content,
+	}
+	body, _ := json.Marshal(note)
+
+	req, _ := http.NewRequest(http.MethodPut, "http://localhost:3000/notes/"+id, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
