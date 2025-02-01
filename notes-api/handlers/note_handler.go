@@ -50,7 +50,7 @@ func GetNote(w http.ResponseWriter, r *http.Request) {
 func UpdateNote(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var note models.Note
-	if err := db.DB.First(&note, id).Error; err != nil {
+	if err := db.DB.Where("id = ?", id).First(&note).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "Note not found", http.StatusNotFound)
 		} else {
@@ -59,7 +59,7 @@ func UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewDecoder(r.Body).Decode(&note)
-	db.DB.Save(&note)
+	db.DB.Where("id = ?", id).Updates(&note)
 	json.NewEncoder(w).Encode(note)
 }
 
