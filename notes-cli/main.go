@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -41,10 +42,12 @@ type apiNote struct {
 }
 
 type model struct {
-	list     list.Model
-	textarea textarea.Model
-	cursor   int
-	focus    string // "list" or "content"
+	list       list.Model
+	textarea   textarea.Model
+	titleInput textinput.Model
+	cursor     int
+	focus      string
+	creating   bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -57,11 +60,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+		case "ctrl+n":
+			if !m.creating && m.focus == "list" {
+				m.creating = true
+				m.titleInput.Reset()
+				return m, textinput.Blink
+			}
+		case "esc":
+			if m.creating {
+				m.creating = false
+				return m, nil
+			} else {
+				m.focus = "list"
+			}
 		case "enter":
-			if m.focus == "list" {
+			if m.creating {
+				title := m.titleInput.Value()
+				if title != "" {
+					createNote(title, "")
+					m.list.SetItems(loadNotes())
+				}
+				m.creating = false
+				return m, nil
+			} else {
 				m.focus = "content"
-				item := m.list.SelectedItem().(noteListItem)
-				m.textarea.SetValue(item.content)
 				m.textarea.Focus()
 			}
 		case "ctrl+b":
@@ -82,10 +104,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				deleteNote(m.list.SelectedItem().(noteListItem).ID())
 				m.list.RemoveItem(m.cursor)
 			}
-		case "esc":
-			m.focus = "list"
-			m.textarea.Blur()
 		}
+
+		if m.creating {
+			var cmd tea.Cmd
+			m.titleInput, cmd = m.titleInput.Update(msg)
+			return m, cmd
+		}
+
 	case tea.WindowSizeMsg:
 		h, v := listStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
@@ -121,7 +147,7 @@ func (m model) View() string {
 		headerBorder = headerBorder.BorderForeground(lipgloss.Color("213"))
 	}
 
-	return lipgloss.JoinHorizontal(
+	mainView := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		listBorder.Render(m.list.View()),
 		lipgloss.JoinVertical(
@@ -130,6 +156,28 @@ func (m model) View() string {
 			contentBorder.Render(m.textarea.View()),
 		),
 	)
+
+	if m.creating {
+		return lipgloss.Place(
+			m.list.Width(),
+			m.list.Height(),
+			lipgloss.Center,
+			lipgloss.Center,
+			lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("213")).
+				Padding(1, 2).
+				Render(
+					lipgloss.JoinVertical(
+						lipgloss.Center,
+						m.titleInput.View(),
+						lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Press Enter to save • Esc to cancel"),
+					),
+				),
+		)
+	}
+
+	return mainView
 }
 
 func loadNotes() []list.Item {
@@ -189,18 +237,29 @@ func initialModel() model {
 	ta := textarea.New()
 	if len(items) > 0 {
 		ta.Placeholder = items[0].(noteListItem).content
+		if ta.Placeholder == "" {
+			ta.Placeholder = "This note is empty"
+		}
 	} else {
 		ta.Placeholder = "No notes available"
 	}
+
 	ta.SetWidth(80)
 	ta.SetHeight(20)
-	ta.ShowLineNumbers = false
+	ta.ShowLineNumbers = true
+
+	ti := textinput.New()
+	ti.Placeholder = "Title"
+	ti.Focus()
+	ti.CharLimit = 50
+	ti.Width = 30
 
 	return model{
-		list:     list.New(items, list.NewDefaultDelegate(), 100, 100),
-		textarea: ta,
-		cursor:   0,
-		focus:    "list",
+		list:       list.New(items, list.NewDefaultDelegate(), 100, 100),
+		textarea:   ta,
+		cursor:     0,
+		focus:      "list",
+		titleInput: ti,
 	}
 }
 
