@@ -66,7 +66,7 @@ func UpdateNote(w http.ResponseWriter, r *http.Request) {
 func DeleteNote(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	var note models.Note
-	if err := db.DB.Delete(&note, id).Error; err != nil {
+	if err := db.DB.Where("id = ?", id).Delete(&note).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
