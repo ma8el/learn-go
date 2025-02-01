@@ -66,6 +66,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "ctrl+b":
 			m.focus = "list"
+			updateNote(m.list.SelectedItem().(noteListItem).ID(), m.list.SelectedItem().(noteListItem).title, m.textarea.Value())
 		case "up", "k":
 			if m.cursor > 0 && m.focus == "list" {
 				m.cursor--
