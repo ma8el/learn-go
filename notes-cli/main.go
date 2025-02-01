@@ -18,13 +18,15 @@ var (
 )
 
 type noteListItem struct {
-	title, desc string
+	title, content string
+	createdAt      time.Time
 }
 
 func (i noteListItem) Title() string { return i.title }
 
-func (i noteListItem) Description() string { return i.desc }
+func (i noteListItem) Description() string { return i.content }
 func (i noteListItem) FilterValue() string { return i.title }
+func (i noteListItem) CreatedAt() string   { return i.createdAt.Format(time.RFC3339) }
 
 type apiNote struct {
 	ID        string    `json:"id"`
@@ -35,7 +37,8 @@ type apiNote struct {
 
 type model struct {
 	list     list.Model
-	selected string // Add this field to track selected content
+	selected string
+	cursor   int
 }
 
 func (m model) Init() tea.Cmd {
@@ -50,7 +53,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			item := m.list.SelectedItem().(noteListItem)
-			m.selected = item.desc
+			m.selected = item.content
+		case "up", "k":
+			m.cursor--
+		case "down", "j":
+			m.cursor++
 		}
 	case tea.WindowSizeMsg:
 		h, v := listStyle.GetFrameSize()
@@ -63,11 +70,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// Update this line to show the selected content
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		listStyle.Render(m.list.View()),
-		noteStyle.Render(m.selected),
+		noteStyle.Render(m.list.Items()[m.cursor].(noteListItem).content),
 	)
 }
 
@@ -78,7 +84,6 @@ func loadNotes() []list.Item {
 		return nil
 	}
 	defer resp.Body.Close()
-
 	var apiNotes []apiNote
 	if err := json.NewDecoder(resp.Body).Decode(&apiNotes); err != nil {
 		log.Printf("Error decoding response: %v", err)
@@ -88,8 +93,9 @@ func loadNotes() []list.Item {
 	items := make([]list.Item, len(apiNotes))
 	for i, note := range apiNotes {
 		items[i] = noteListItem{
-			title: note.Title,
-			desc:  note.Content,
+			title:     note.Title,
+			content:   note.Content,
+			createdAt: note.CreatedAt,
 		}
 	}
 	return items
