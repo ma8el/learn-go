@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	listStyle = lipgloss.NewStyle().Margin(1, 2)
-	noteStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(10).Border(lipgloss.RoundedBorder())
+	listStyle       = lipgloss.NewStyle().Margin(1, 2)
+	noteHeaderStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(3).Border(lipgloss.RoundedBorder())
+	noteStyle       = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(10).Border(lipgloss.RoundedBorder())
 )
 
 type noteListItem struct {
@@ -80,18 +81,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	var header string
 	var content string
+
 	if len(m.list.Items()) > 0 && m.cursor < len(m.list.Items()) {
 		item := m.list.Items()[m.cursor].(noteListItem)
-		content = fmt.Sprintf("ID: %s\nTitle: %s\n\n%s", item.id, item.title, item.content)
+		header = fmt.Sprintf("ID: %s\nTitle: %s", item.id, item.title)
+		content = item.content
 	} else {
-		content = "No notes available"
+		header = "No notes available"
+		content = ""
 	}
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		listStyle.Render(m.list.View()),
-		noteStyle.Render(content),
+		lipgloss.JoinVertical(
+			lipgloss.Center,
+			noteHeaderStyle.Render(header),
+			noteStyle.Render(content),
+		),
 	)
 }
 
