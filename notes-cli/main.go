@@ -12,17 +12,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
+var (
+	listStyle = lipgloss.NewStyle().Margin(1, 2)
+	noteStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(10).Border(lipgloss.RoundedBorder())
+)
 
 type noteListItem struct {
-	//	title     string
-	//	createdAt time.Time
 	title, desc string
 }
 
 func (i noteListItem) Title() string { return i.title }
 
-// func (i noteListItem) CreatedAt() string   { return i.createdAt.Format(time.RFC3339) }
 func (i noteListItem) Description() string { return i.desc }
 func (i noteListItem) FilterValue() string { return i.title }
 
@@ -34,7 +34,8 @@ type apiNote struct {
 }
 
 type model struct {
-	list list.Model
+	list     list.Model
+	selected string // Add this field to track selected content
 }
 
 func (m model) Init() tea.Cmd {
@@ -44,11 +45,15 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" {
+		switch msg.String() {
+		case "ctrl+c":
 			return m, tea.Quit
+		case "enter":
+			item := m.list.SelectedItem().(noteListItem)
+			m.selected = item.desc
 		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := listStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
 
@@ -58,7 +63,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return docStyle.Render(m.list.View())
+	// Update this line to show the selected content
+	return lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		listStyle.Render(m.list.View()),
+		noteStyle.Render(m.selected),
+	)
 }
 
 func loadNotes() []list.Item {
