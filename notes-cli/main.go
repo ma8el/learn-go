@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,9 +25,10 @@ type noteListItem struct {
 
 func (i noteListItem) Title() string { return i.title }
 
-func (i noteListItem) Description() string { return i.content }
+func (i noteListItem) Description() string {
+	return fmt.Sprintf("Created: %s", i.createdAt.Format("2006-01-02 15:04"))
+}
 func (i noteListItem) FilterValue() string { return i.title }
-func (i noteListItem) CreatedAt() string   { return i.createdAt.Format(time.RFC3339) }
 
 type apiNote struct {
 	ID        string    `json:"id"`
