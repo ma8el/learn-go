@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	listStyle       = lipgloss.NewStyle().Margin(1, 2)
-	noteHeaderStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(3).Border(lipgloss.RoundedBorder())
-	noteStyle       = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(10).Border(lipgloss.RoundedBorder())
+	listStyle       = lipgloss.NewStyle().Margin(1, 1).Border(lipgloss.RoundedBorder())
+	noteHeaderStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(1).Border(lipgloss.RoundedBorder())
+	noteStyle       = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(29).Border(lipgloss.RoundedBorder())
 )
 
 type noteListItem struct {
@@ -40,9 +40,9 @@ type apiNote struct {
 }
 
 type model struct {
-	list     list.Model
-	selected string
-	cursor   int
+	list   list.Model
+	cursor int
+	focus  string // "list" or "content"
 }
 
 func (m model) Init() tea.Cmd {
@@ -56,28 +56,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "enter":
-			item := m.list.SelectedItem().(noteListItem)
-			m.selected = item.content
+			if m.focus == "list" {
+				m.focus = "content"
+			}
+		case "ctrl+b":
+			m.focus = "list"
 		case "up", "k":
-			if m.cursor > 0 {
+			if m.cursor > 0 && m.focus == "list" {
 				m.cursor--
 			}
 		case "down", "j":
-			if m.cursor < len(m.list.Items())-1 {
+			if m.cursor < len(m.list.Items())-1 && m.focus == "list" {
 				m.cursor++
 			}
 		case "d":
-			deleteNote(m.list.SelectedItem().(noteListItem).ID())
-			m.list.RemoveItem(m.cursor)
+			if m.focus == "list" {
+				deleteNote(m.list.SelectedItem().(noteListItem).ID())
+				m.list.RemoveItem(m.cursor)
+			}
 		}
 	case tea.WindowSizeMsg:
 		h, v := listStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
 
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
+	if m.focus == "list" {
+		var cmd tea.Cmd
+		m.list, cmd = m.list.Update(msg)
+		return m, cmd
+	}
+	return m, nil
 }
 
 func (m model) View() string {
@@ -93,13 +101,24 @@ func (m model) View() string {
 		content = ""
 	}
 
+	listBorder := listStyle
+	headerBorder := noteHeaderStyle
+	contentBorder := noteStyle
+
+	if m.focus == "list" {
+		listBorder = listBorder.BorderForeground(lipgloss.Color("213"))
+	} else {
+		contentBorder = contentBorder.BorderForeground(lipgloss.Color("213"))
+		headerBorder = headerBorder.BorderForeground(lipgloss.Color("213"))
+	}
+
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		listStyle.Render(m.list.View()),
+		listBorder.Render(m.list.View()),
 		lipgloss.JoinVertical(
 			lipgloss.Center,
-			noteHeaderStyle.Render(header),
-			noteStyle.Render(content),
+			headerBorder.Render(header),
+			contentBorder.Render(content),
 		),
 	)
 }
@@ -158,7 +177,11 @@ func deleteNote(id string) {
 
 func main() {
 	items := loadNotes()
-	m := model{list: list.New(items, list.NewDefaultDelegate(), 100, 100), cursor: 0}
+	m := model{
+		list:   list.New(items, list.NewDefaultDelegate(), 100, 100),
+		cursor: 0,
+		focus:  "list",
+	}
 	m.list.Title = "Notes"
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
