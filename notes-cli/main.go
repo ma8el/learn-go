@@ -18,8 +18,8 @@ import (
 
 var (
 	listStyle       = lipgloss.NewStyle().Margin(1, 1).Border(lipgloss.RoundedBorder())
-	noteHeaderStyle = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(1).Border(lipgloss.RoundedBorder())
-	noteStyle       = lipgloss.NewStyle().Padding(0, 1).Width(80).Height(29).Border(lipgloss.RoundedBorder())
+	noteHeaderStyle = lipgloss.NewStyle().Width(80).Height(1).Border(lipgloss.RoundedBorder())
+	noteStyle       = lipgloss.NewStyle().Width(80).Height(29).Border(lipgloss.RoundedBorder())
 )
 
 type noteListItem struct {
@@ -48,6 +48,8 @@ type model struct {
 	cursor     int
 	focus      string
 	creating   bool
+	width      int
+	height     int
 }
 
 func (m model) Init() tea.Cmd {
@@ -114,6 +116,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 		h, v := listStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
@@ -128,6 +132,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	listWidth := m.width / 4
+	contentWidth := m.width * 7 / 10
+	contentHeight := m.height - 10
+
+	listStyle = listStyle.Width(listWidth).Height(contentHeight)
+	noteStyle = noteStyle.Width(contentWidth).Height(contentHeight)
+	noteHeaderStyle = noteHeaderStyle.Width(contentWidth).Height(2)
+	m.textarea.SetWidth(contentWidth)
+	m.textarea.SetHeight(contentHeight - 2)
+
 	var header string
 
 	if len(m.list.Items()) > 0 && m.cursor < len(m.list.Items()) {
@@ -273,6 +287,8 @@ func initialModel() model {
 		cursor:     0,
 		focus:      "list",
 		titleInput: ti,
+		width:      80,
+		height:     24,
 	}
 }
 
